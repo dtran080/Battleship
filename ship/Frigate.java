@@ -1,6 +1,6 @@
 package ship;
 
-import main.Battleship;
+import client.Battleship;
 
 public class Frigate extends SHIP {
 	public Frigate(Battleship prog){

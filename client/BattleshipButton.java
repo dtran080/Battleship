@@ -1,4 +1,4 @@
-package main;
+package client;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -36,15 +36,17 @@ public class BattleshipButton extends JButton {
 		}
 		@Override
 		public void actionPerformed(ActionEvent e) {
-			BattleshipButton source = (BattleshipButton)e.getSource();
-			if (!source.isOccupy()){
-				//print out coordinate
-				String coord =String.valueOf((char)(x+65));
-				coord+=String.valueOf(y+1);
-				System.out.printf("Client select: %s\n",coord);				
-				prog.displayAvailCoord(y, x);
-			} else {
-				JOptionPane.showMessageDialog(null, "Can't place your ship here!");
+			if (!prog.connectReady){
+				BattleshipButton source = (BattleshipButton)e.getSource();
+				if (!source.isOccupy()){
+					//print out coordinate
+					String coord =String.valueOf((char)(x+65));
+					coord+=String.valueOf(y+1);
+					System.out.printf("Client select: %s\n",coord);				
+					prog.displayAvailCoord(y, x);
+				} else {
+					JOptionPane.showMessageDialog(null, "Can't place your ship here!");
+				}
 			}
 		}		
 	}

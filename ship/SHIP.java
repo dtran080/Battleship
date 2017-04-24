@@ -6,12 +6,11 @@ import java.util.List;
 
 import javax.swing.JOptionPane;
 
-import main.Battleship;
+import client.Battleship;
 
 abstract class SHIP {
 	protected SHIP_TYPE shipType;
 	protected Battleship prog; 
-	private final int SIZE = 10;
 	private int startY,startX,endY,endX; //first coordinate 0-9
 	protected int length; //length of ship
 	private List<Point> endCoord;
@@ -45,16 +44,14 @@ abstract class SHIP {
 		}
 		return pArr;
 	}
-	private boolean inBound(int y, int x){
-		return 0<=y && y<SIZE && 0<=x && x<SIZE;			
-	}
+	
 	private void availableEndCoord(){
 		Point p;
 		int[][] direction = {{-length+1,0},{0,-length+1},{0,length-1},{length-1,0}};
 		for (int[] dir:direction){
 			int y1 = startY+dir[0];
 			int x1 = startX+dir[1];
-			if (inBound(y1,x1)){	//in bound
+			if (Battleship.inBound(y1,x1)){	//in bound
 				if (prog.isFree(startY, startX, y1, x1)){ //free block
 					p = new Point();
 					p.y = y1;

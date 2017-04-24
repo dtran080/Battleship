@@ -1,4 +1,4 @@
-package main;
+package client;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.*;
@@ -9,11 +9,12 @@ import ship.*;
 
 import java.awt.*;
 public class Battleship extends JFrame {
+	
 	BattleshipButton[][] ourBoard;
 	BattleshipServerButton[][] theirBoard; 
-	final int size = 10;
+	final static int size = 10;
 	int btnSize = 40;
-	JPanel uPanel, cPanel, uShip;
+	JPanel uPanel, cPanel, uShip; //panel's list
 	JButton connectBtn;
 	JList<String> shipList;
 	ArrayList<Integer> deployedShip;
@@ -24,6 +25,7 @@ public class Battleship extends JFrame {
 	Minesweep minesweeper;
 	Submarine submarine;
 	int selectedShip = -1;
+	boolean connectReady = false;
 	
 	private final Color[] shipColor = {Color.BLUE,Color.GRAY,Color.ORANGE,Color.yellow,Color.MAGENTA};
 	
@@ -39,6 +41,7 @@ public class Battleship extends JFrame {
 		add(uPanel);
 		add(uShip);
 		add(cPanel);
+		
 	}
 
 	private void initializeWindow() {
@@ -98,9 +101,7 @@ public class Battleship extends JFrame {
 	    shipList.addListSelectionListener(llsl);
 	    shipList.setSize(80,btnSize*CellRenderer.db.length);
 	    
-	    deployedShip = new ArrayList<Integer>(); //list of deployed ship
-	    
-	    
+	    deployedShip = new ArrayList<Integer>(); //list of deployed ship	    
 	    uShip.add(shipList,BorderLayout.CENTER);	//add the list to the panel
 	    //connect Button
 	    connectBtn = new JButton("Connect");
@@ -117,6 +118,8 @@ public class Battleship extends JFrame {
 			lblvalue = String.format("%4s", String.valueOf(Character.toChars(i+64)));
 			cPanel.add(new JLabel(lblvalue));
 		}
+		
+		//initialize Server's Board
 		theirBoard= new BattleshipServerButton[size][size];
 		for (int i=0;i<size;i++){
 			lblvalue = String.format("%2d", i+1);
@@ -215,6 +218,7 @@ public class Battleship extends JFrame {
 					JOptionPane.showMessageDialog(this,"All ships are deployed.\nReady to Connect?");
 					connectBtn.setEnabled(true);
 					this.shipList.setEnabled(false);
+					connectReady = true;
 				}				
 				return;
 			}
@@ -261,10 +265,18 @@ public class Battleship extends JFrame {
 			range[2] = endX;	
 		}
 		System.out.printf("%d %d %d %d \n",range[0],range[1],range[2],range[3]);
+		int dir[][] = {{-1,-1},{-1,0},{-1,1},{0,1},{0,-1},{1,-1},{1,0},{1,1}};
 		for (int i=range[0];i<=range[1];i++)
 			for (int j=range[2];j<=range[3];j++){
 				ourBoard[i][j].setBackground(shipColor[type]);
 				ourBoard[i][j].occupy = true;
+				for (int[] d:dir){
+					int y1 = i+d[0];
+					int x1 = j+d[1];
+					if (Battleship.inBound(y1, x1)){
+						ourBoard[y1][x1].occupy = true;
+					}
+				}
 			}
 		
 		
@@ -274,6 +286,9 @@ public class Battleship extends JFrame {
 		coord.append(String.valueOf((char)(x+65)));
 		coord.append(String.valueOf(y+1));
 		return coord.toString();
+	}
+	public static boolean inBound(int y, int x){
+		return 0<=y && y<size && 0<=x && x<size;			
 	}
 	public static void main(String[] args){
 		SwingUtilities.invokeLater(new Runnable() {

@@ -1,6 +1,6 @@
 package ship;
 
-import main.Battleship;
+import client.Battleship;
 
 public class Carrier extends SHIP{
 	
