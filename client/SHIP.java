@@ -1,4 +1,4 @@
-package ship;
+package client;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -8,15 +8,20 @@ import javax.swing.JOptionPane;
 
 import client.Battleship;
 
-abstract class SHIP {
+public class SHIP {
 	protected SHIP_TYPE shipType;
 	protected Battleship prog; 
 	private int startY,startX,endY,endX; //first coordinate 0-9
-	protected int length; //length of ship
+	protected int length,order; //length of ship
 	private List<Point> endCoord;
-	protected boolean sunk, isDeployed;
+	protected boolean  isDeployed;
 	
-	public boolean isSunk(){return false;}
+	public SHIP(int length,Battleship prog, int order){
+		this.order = order;
+		this.length = length;
+		isDeployed = false;
+		this.prog = prog;
+	}
 	public void deploy(){
 		isDeployed = true;
 	}
@@ -34,7 +39,7 @@ abstract class SHIP {
 		if (isDeployed){
 			this.endY = y;
 			this.endX = x;
-			this.prog.placeShip(startY, startX, endY, endX, shipType.ordinal());
+			this.prog.placeShip(startY, startX, endY, endX);
 		}
 	}
 	public Point[] getEndCoord(){

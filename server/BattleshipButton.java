@@ -1,43 +1,44 @@
-package client;
+package server;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
 import javax.swing.*;
-import shipClient.*;
+
 public class BattleshipButton extends JButton { 
-	//Client Board button
+	//Server Board button
 	private int y,x;
-	private Battleship prog;
+	private BattleshipServer prog;
 	boolean occupy;
 	
 	public boolean isOccupy(){
 		return occupy;
 	}
-	public BattleshipButton(int y, int x, Battleship prog){
+	public BattleshipButton(int y, int x, BattleshipServer prog){
 		this.y = y;
 		this.x = x;
 		this.occupy = false;
 		this.prog = prog;
-		this.addActionListener(new BattleshipButtonActionListener());
+		BattleshipButtonActionListener bbal = new BattleshipButtonActionListener(y,x);
+		this.addActionListener(bbal);
 	}
 	@Override
 	public String toString(){
 		return prog.convertCoord(y, x);
 	}
 	private class BattleshipButtonActionListener implements ActionListener{
-		private String coord;
-		public BattleshipButtonActionListener(){
-			this.coord =String.valueOf((char)(x+65));
-			coord+=String.valueOf(y+1);
+		private int y,x;
+		public BattleshipButtonActionListener(int y, int x){
+			this.y=y;
+			this.x=x;
 		}
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			if (!prog.connectReady){	
-				//before client connected to the server
+				//before the server connected to Client
 				BattleshipButton source = (BattleshipButton)e.getSource();
-				if (!source.isOccupy()){//print out coordinate
-					System.out.printf("Client select: %s\n",coord);				
+				if (!source.isOccupy()){//print out coordinate				
+					System.out.printf("Server select: %s\n",source.toString());				
 					prog.displayAvailCoord(y, x);
 				} else {
 					JOptionPane.showMessageDialog(null, "Can't place your ship here!");

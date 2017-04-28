@@ -1,4 +1,4 @@
-package client;
+package server;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,32 +14,33 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
-public class Battleship extends JFrame {
+public class BattleshipServer extends JFrame {
 	
-	BattleshipButton[][] ourBoard;
-	BattleshipServerButton[][] theirBoard; 
+	BattleshipButton[][] ourBoard;	//server board
+	BattleshipClientButton[][] theirBoard; //client board
 	final static int size = 10;
 	int btnSize = 40;
 	JPanel uPanel, cPanel, uShip; //panel's list
 	JButton connectBtn;
 	JList<String> shipList;
+	private int[] shipLength = {5,4,3,3,2};
 	ArrayList<Integer> deployedShip;
 	//ship type
-	private Vector<Vector<Point>> shipCoord;
-	private SHIP[] shipArr = new SHIP[5];
+	SHIP[] shipArr = new SHIP[5];
 	int selectedShip = -1;
-	//their board
-	String clientMessage;
+	String serverMessage;
+	ServerSocket serverS;
 	boolean connectReady = false;
-	volatile boolean clientTurn;
-	private int[] shipLength = {5,4,3,3,2};
+	volatile boolean serverTurn = false;
+	private Vector<Vector<Point>> shipCoord;
+	private final String[] command = {"READY","HIT","MISS","SUNK"};
 	private int ourShipCount,theirShipCount;
 	private final Color[] shipColor = {Color.BLUE,Color.green,Color.ORANGE,Color.yellow,Color.MAGENTA};
-	private final String[] command = {"READY","HIT","MISS","SUNK"};
-	public Battleship(){ 
+	
+	public BattleshipServer(){ 
 		//main frame
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
-		setTitle("Battleship Client");		
+		setTitle("BattleshipServer Server");		
 		setBounds(0,0,btnSize*(size+1)*5/2,btnSize*(size+1));
 		getContentPane().setLayout(null);
 		//change windows
@@ -75,7 +76,8 @@ public class Battleship extends JFrame {
 		}
 		//ship list
 		selectedShip = -1;		//index of selected ship
-		ourShipCount = theirShipCount = 5;
+		shipCoord = new Vector<Vector<Point>>();
+		ourShipCount=theirShipCount=5;
 		uShip = new JPanel(new BorderLayout());	
 		uShip.setBounds(btnSize*(size+1),0,btnSize*(size+1)/2,btnSize*(size+1));
 		JLabel lbl1 = new JLabel("Ship list: ");
@@ -85,44 +87,51 @@ public class Battleship extends JFrame {
 		shipList = new JList(CellRenderer.db);
 	    shipList.setSelectionMode (ListSelectionModel.SINGLE_SELECTION);
 	    shipList.setCellRenderer(new CellRenderer());
-	    
+  
 	    
 	    class LL implements ListSelectionListener { 
 	    	//selection listener
-	    	 	@Override
+	    	@Override
 	    	public void valueChanged (ListSelectionEvent e) {
 	    		if (e.getValueIsAdjusting()==true) 
 	    			return;
 	    		final JList l = (JList) e.getSource();
 	    		final int selected = l.getSelectedIndex();
-	    		System.out.printf ("Client Selecting: %s\n",CellRenderer.db[selected]);
+	    		System.out.printf ("ClisetStartCoordent Selecting: %s\n",CellRenderer.db[selected]);
 	    		l.setSelectedIndex(selected);
 	    		selectedShip = selected;	//change the index of selected ship
 		     }
-	    }
+	    }	    
 	    shipList.addListSelectionListener(new LL());
 	    shipList.setSize(80,btnSize*CellRenderer.db.length);
-	    shipCoord = new Vector<Vector<Point>>();
+	    
 	    deployedShip = new ArrayList<Integer>(); //list of deployed ship	    
 	    uShip.add(shipList,BorderLayout.CENTER);	//add the list to the panel
 	    //connect Button
 	    connectBtn = new JButton("Connect");
 	    connectBtn.setPreferredSize(new Dimension(50,20));
 	    connectBtn.setEnabled(false);
-	    
+	    connectBtn.putClientProperty("prog", this);
+	    try {
+			serverS = new ServerSocket(9090,100);
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 	    connectBtn.addActionListener(new ActionListener() {
-			
+		
 			@Override
-			public void actionPerformed(ActionEvent e) { //ready
+			public void actionPerformed(ActionEvent e) {
 				JButton btn = (JButton) e.getSource();
-				connectReady = true;
-				System.out.println("Client is running...");
-				runClient();
 				btn.setEnabled(false);
+				BattleshipServer prog = (BattleshipServer)btn.getClientProperty("prog"); //reference to Battleship
+				prog.connectReady = true;
+				//System.out.println("Server is running...");
+				prog.runServer();
+				
 			}
 		});
 	    uShip.add(connectBtn,BorderLayout.SOUTH);
-	    clientMessage = new String();
+	    serverMessage = new String();
 		
 		//computer board //Server
 		cPanel = new JPanel(); 
@@ -135,18 +144,34 @@ public class Battleship extends JFrame {
 		}
 		
 		//initialize Server's Board
-		theirBoard= new BattleshipServerButton[size][size];
+		theirBoard= new BattleshipClientButton[size][size];
 		for (int i=0;i<size;i++){
 			lblvalue = String.format("%2d", i+1);
 			cPanel.add(new JLabel(lblvalue));
 			for (int j=0;j<size;j++){
-				theirBoard[i][j] = new BattleshipServerButton(i,j,this);
+				theirBoard[i][j] = new BattleshipClientButton(i,j,this);
+				theirBoard[i][j].putClientProperty("prog", this);
+				theirBoard[i][j].putClientProperty("coord", new int[]{i,j});
 				theirBoard[i][j].setPreferredSize(new Dimension(btnSize,btnSize));
 				cPanel.add(theirBoard[i][j]);
 			}
-		}	
+		}
+		//ship and play	
 	}
 	
+	static Socket sock;
+	void runServer(){
+		try{
+			if (connectReady){
+				sock = serverS.accept();
+				DisposableServer localServer = new DisposableServer(sock);
+				localServer.start();
+				
+			}
+		} catch (IOException ioe){
+			ioe.printStackTrace();
+		}
+	}
 	public int[] convertBoardCoordtoPoint(String coord){
 		int x1=coord.charAt(0)-65;
 		int y1=Integer.parseInt(coord.substring(1))-1;
@@ -162,75 +187,63 @@ public class Battleship extends JFrame {
 		}
 		return -1;
 	}
-	private class ClientThread extends Thread{
+	private class DisposableServer extends Thread 
+	{
+		DataInputStream reader;
 		Socket socket;
-		DataOutputStream writer;
-		DataInputStream reader;	
-		public ClientThread(Socket sock){
-			try{
+		DataOutputStream writer;		
+		public DisposableServer(Socket sock) {
+			try {
 				socket = sock;
-				writer = new DataOutputStream(socket.getOutputStream());
 				reader = new DataInputStream(socket.getInputStream());
-			} catch (IOException ioe){
-				System.err.println("Can't establish connection");
-			}
+				writer = new DataOutputStream(socket.getOutputStream()); 
+				
+			}catch (IOException ioe) { } 
 		}
-		public void run(){
+		public void run() {
 			try
-			{			
-				writer.writeUTF(command[0]);
-				String serverMsg = reader.readUTF();
-				if (serverMsg.equals(command[0])){				
-					clientTurn = true;					
-					JOptionPane.showMessageDialog(null, "Connection to server is receive.\nYour turn first!!!");
-					while (ourShipCount>0&&theirShipCount>0){
-						//System.out.printf("Client Turn: %s \n",String.valueOf(clientTurn));
-						if (clientTurn){	//client is attacking
-							while (clientTurn){	}	
-							System.out.println("Client sending: "+clientMessage);
-							writer.writeUTF(clientMessage);
-							int[] coord = convertBoardCoordtoPoint(clientMessage);
+			{				
+				writer.writeUTF(command[0]); //READY
+		        String clientCoord = reader.readUTF();
+		        if (clientCoord.equals("READY")){	//READY
+		        	System.out.println("READY received from client");
+		        	serverTurn = false;        
+			        while (ourShipCount>0&&theirShipCount>0){	//infinite terminate when the game is over
+			        	//System.out.printf("Server Turn: %s \n",String.valueOf(serverTurn));
+			        	if (!serverTurn){ //client's attacking
+			        		clientCoord = reader.readUTF();        		
+							System.out.println("Server read: " + clientCoord +" from client");
+							int res = fire(clientCoord); //result after hit;
+							System.out.printf("Client %s the target\n",command[res]);
+							writer.writeUTF(command[res]);	//send result to the client
+							serverTurn = true;
+			        	}
+			        	else { //server's attacking	, serverTurn = true      
+			        		while (serverTurn){
+			        			
+			        		}        		
+			        		System.out.println("Server sending: "+serverMessage);
+			        		writer.writeUTF(serverMessage);
+			        		int[] coord = convertBoardCoordtoPoint(serverMessage);
 							String res = reader.readUTF(); //too see if hit or miss
+							System.out.println(res);
 							theirBoard[coord[0]][coord[1]].setBackground((res.equals("MISS"))?Color.cyan:Color.RED); 
 							if(res.equals("SUNK")){
 								theirShipCount--;
 								JOptionPane.showMessageDialog(null, "Ship is sunk!");
 							}
-							
-						}else {	//server is attacking															
-							clientMessage = "";						
-							serverMsg = reader.readUTF();		
-							System.out.println("Sent from Server & Read by Client: "+ serverMsg); 
-							//changing the GUI
-							int res = fire(serverMsg);
-							//check if it is a hit or miss
-							System.out.printf("Client %s the target\n",command[res]);
-							writer.writeUTF(command[res]);
-							
-							clientTurn = true;
-						}
-									        
-					}
-					JOptionPane.showMessageDialog(null,(ourShipCount==0)?"YOU LOSE":"YOU WON");
-					socket.close();
-				}
-			}catch (IOException ioe) { }
-		}
-	}
-	public void runClient()
-	{		
-		try {
-			/*String serverName = JOptionPane.showInputDialog("Enter server's IP (empty for localhost): ");
-			if (serverName.isEmpty())
-				serverLocation = InetAddress.getLocalHost();*/
-			Socket client = new Socket(InetAddress.getLocalHost(),9090);
-			ClientThread clientTh = new ClientThread(client);
-			clientTh.start(); 
-		}catch (UnknownHostException uhe){
-			uhe.printStackTrace();
-		}
-		catch (IOException e) { e.printStackTrace();}
-	}
+			        	}
+			        }
+			           	JOptionPane.showMessageDialog(null, (ourShipCount==0)?"YOU LOSE":"YOU WON");
+			           	//close
+			           	socket.close();
+			           	serverS.close();
+			        
+		        }
+			}catch (IOException ioe) { ioe.printStackTrace(); }
+		} // run
+	} // DisposableServer
+	
 	public void displayAvailCoord(int y,int x){
 		Point[] pos;
 		if (deployedShip.contains(selectedShip)){
@@ -270,24 +283,23 @@ public class Battleship extends JFrame {
 			availCoordList.setSelectionMode(ListSelectionModel.SINGLE_INTERVAL_SELECTION);
 			JOptionPane.showMessageDialog(this, availCoordList, 
 					String.format("Original: [%s]",convertCoord(y, x)),
-					JOptionPane.INFORMATION_MESSAGE);		
-			int selectEndPos = availCoordList.getSelectedIndex(); 
-			//get End position coordinate
+					JOptionPane.INFORMATION_MESSAGE);
 			
+			int selectEndPos = availCoordList.getSelectedIndex(); 			
 			if (selectEndPos>-1 && selectEndPos<pos.length){
 				//DEPLOY SHIP HERE
 				Point p = pos[selectEndPos];
 				System.out.printf("Selected Option: %d; Coord: %s\n",selectEndPos,availCoordStr[selectEndPos]);
 				shipArr[selectedShip].deploy();
 				shipArr[selectedShip].setEndCoord(p.y, p.x);	//finalize ship Coord
-				
-				deployedShip.add(selectedShip); //add ship to deploy list
-						
+				deployedShip.add(selectedShip);
+								
 				if(deployedShip.size()==5){	// Check if all 5 ships are deployed All
 					JOptionPane.showMessageDialog(this,"All ships are deployed.\nReady to Connect?");
 					connectBtn.setEnabled(true);
 					this.shipList.setEnabled(false);
-					}				
+					connectReady = true;
+				}				
 				return;
 			}
 		} else JOptionPane.showMessageDialog(null,"No available coordinate");
@@ -318,8 +330,9 @@ public class Battleship extends JFrame {
 	private int isFired(Point p){ //order of the ship that is hit
 		for (int i=0;i<5;i++){
 			for (int j=0;j<shipCoord.get(i).size();j++){
-				if (shipCoord.get(i).get(j).equals(p)){				
-					return i;//check if 2 point are the same
+				if (shipCoord.get(i).get(j).equals(p)){
+					//check if 2 point are the same
+					return i;
 				}
 			}
 		}
@@ -328,20 +341,21 @@ public class Battleship extends JFrame {
 	public int fire(String coord){ //when
 		int x1=coord.charAt(0)-65;
 		int y1=Integer.parseInt(coord.substring(1))-1;
-		System.out.printf("Convert: %s to y=%d, x=%d\n", coord,y1,x1);
+		//System.out.printf("Convert: %s to y=%d, x=%d\n", coord,y1,x1);
 		Point p = new Point();
 		p.y = y1;
 		p.x = x1;
 		int shipHit = isFired(p);
 		System.out.println("Ship hit: "+shipHit);
-		if (shipHit>=0){
-			ourBoard[y1][x1].setBackground(Color.BLACK);
+		if (shipHit>=0){ //ship is hit
+			ourBoard[y1][x1].setBackground(Color.BLACK); //destroyed
 			shipLength[shipHit] -=1;
 			System.out.println(Arrays.toString(shipLength));
-			if (isSunk()!=-1) //ship is sunk
-				return 3;
+			//ship hit ==> 
+			if(isSunk()!=-1)return 3;
 			return 1;	//hit
-		} else 	ourBoard[y1][x1].setBackground(Color.CYAN);
+		} //ship is missed
+		ourBoard[y1][x1].setBackground(Color.CYAN);
 		return 2;	//miss
 	}
 	public void placeShip(int startY, int startX, int endY, int endX){
@@ -375,13 +389,13 @@ public class Battleship extends JFrame {
 				for (int[] d:dir){
 					int y1 = i+d[0];
 					int x1 = j+d[1];
-					if (inBound(y1, x1)){
+					if (BattleshipServer.inBound(y1, x1)){
 						ourBoard[y1][x1].occupy = true;
 					}
 				}
 			}
-		
 		shipCoord.add(sCoord);	
+		
 	}
 	public String convertCoord(int y,int x){
 		StringBuilder coord = new StringBuilder();
@@ -389,23 +403,25 @@ public class Battleship extends JFrame {
 		coord.append(String.valueOf(y+1));
 		return coord.toString();
 	}
-	public void setClientMessage(String message){
-		clientMessage = message;
+	public void setServerMessage(String message){
+		serverMessage = message;
 	}
-	public String getClientMessage(){
-		return clientMessage;
+	public String getServerMessage(){
+		return serverMessage;
 	}
 	public static boolean inBound(int y, int x){
 		return 0<=y && y<size && 0<=x && x<size;			
 	}
 	public static void main(String[] args){
-		SwingUtilities.invokeLater(new Runnable() {		
+		SwingUtilities.invokeLater(new Runnable() {
+			
 			@Override
 			public void run() {
-				Battleship client = new Battleship();
-				client.setVisible(true);
+				new BattleshipServer().setVisible(true);
 			}
 		});
 	}
 	
 }
+
+

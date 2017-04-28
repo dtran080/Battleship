@@ -1,6 +1,5 @@
-package client;
+package server;
 
-import java.awt.Color;
 import java.awt.Component;
 
 import javax.swing.JCheckBox;
@@ -15,7 +14,6 @@ public class CellRenderer extends JCheckBox implements ListCellRenderer{
 	  {       
 	  		setText (" " + db[index]);       
 	  		setSelected (isSelected);     
-
 	  		return (this);    
 	  } 
 }
